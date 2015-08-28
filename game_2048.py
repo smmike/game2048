@@ -18,6 +18,7 @@ OFFSETS = {UP: (1, 0),
            LEFT: (0, 1),
            RIGHT: (0, -1)}
 
+
 def list2d(array2d):
     """
     Helper function to create deep copy of a 2D array
@@ -28,49 +29,12 @@ def list2d(array2d):
     return result
 
 
-def key_of_max(dictionary):
-    max_value = max(dictionary.values())
-    for key in dictionary.keys():
-        if dictionary[key] == max_value:
-            return key
-
-
-def merge(line):
-    """
-    Helper function that merges a single row or column in 2048
-    """
-    output = []
-    merge_factor = 0
-    shift_factor = 0
-    merged = False
-    for index in range(len(line)):
-        if index == 0:
-            if line[index] != 0:
-                output.append(line[index])
-            else:
-                shift_factor += 1
-        elif line[index] != 0:
-            if len(output) > 0 and line[index] == output[-1] and not merged:
-                merge_factor += 1
-                output[-1] += line[index]
-                merged = True
-            else:
-                output.append(line[index])
-                merged = False
-    # we should pad output array with 0 to the length of input
-    while len(output) < len(line):
-        output.append(0)
-    return output
-
-
 class TwentyFortyEight:
     """
     Class to run the game logic.
     """
 
-    NUMBER_OF_TRIALS = 1000
     DIRECTIONS = [LEFT, RIGHT, UP, DOWN]
-    DIRECTION_NAMES = {LEFT: 'left', RIGHT: 'right', UP: 'up', DOWN: 'down'}
     OTHER_DIRS = {UP: [LEFT, RIGHT, DOWN], DOWN: [LEFT, RIGHT, UP], LEFT: [RIGHT, DOWN, UP], RIGHT: [LEFT, DOWN, UP]}
 
     def __init__(self, grid_height, grid_width):
@@ -94,62 +58,39 @@ class TwentyFortyEight:
             self._lines[direction] = {}
             for starting_cell in self._starting_cells[direction]:
                 self._lines[direction][starting_cell] = self.get_line_cells(starting_cell, direction)
-        # print self._starting_cells
+                # print self._starting_cells
 
     @staticmethod
-    def merge_with_metrics(line):
+    def merge(line):
         """
-        This method merges a line towards its start and return a list consisting of 2 elements:
-            * number of individual cells merges happened, where shift_factor of a number at 1 cell to replace 0 is counted
-                as 1 and actual merge of 2 equal values is counted as floating number between 1 and 2 calculated as
-                follows: 1 + (len(line) - merged_index)/len(line), i.e. the closer a merge to the beginning the more
-                score it gets
-            * new merged line if there were any merges
+        Method that merges a single row or column in 2048. If there were no shifts or merges method returns original line.
         """
         output = []
-        merge_factor = 0
-        shift_factor = 0
         merged = False
+        changed = False
+        has_zero = False
         for index in range(len(line)):
-            if index == 0:
-                if line[index] != 0:
-                    output.append(line[index])
-                else:
-                    shift_factor += 1
-            elif line[index] != 0:
+            # if index == 0:
+            #     if line[index] != 0:
+            #         output.append(line[index])
+            #     else:
+            #         has_zero = True
+            if line[index] != 0:
                 if len(output) > 0 and line[index] == output[-1] and not merged:
-                    merge_factor += 1 + 1.0 * (float(len(line)) - len(output))/len(line)
                     output[-1] += line[index]
                     merged = True
+                    changed = True
                 else:
                     output.append(line[index])
+                    if has_zero:
+                        changed = True
                     merged = False
-            # else:
-            #     # self.log index, shift_factor, index - 1 - shift_factor, output
-            #     print index, shift, line, output
-            #     if line[index] != 0:
-            #         shift += 1
-            #     elif
-            #     elif line[index] == output[index - 1 - shift]:
-            #         output[index - 1 - shift] += line[index]
-            #         merge_factor += 1 #+ 4.0*(float(len(line)) - (index - 1 - shift_factor))/len(line)
-            #         output.append(0)
-            #     elif output[index - 1 - shift] == 0:
-            #         output[index - 1 - shift] += line[index]
-            #         shift += 1
-            #     else:
-            #         output.append(line[index])
-
-        # we should pad output array with 0 to the length of input
-        # while len(output) < len(line):
-        #    output.append(0)
-        shift_factor += len(line) - len(output)
-        decrease_factor = 0
-        if len(output) > 1:
-            for index in range(1, len(output)):
-                if output[index] < output[index - 1]:
-                    decrease_factor += (len(output) - index) / (1.0 * len(output))
-        return [merge_factor, shift_factor, decrease_factor, output] #return [merges + (len(line) - len(output)), output]
+            else:
+                has_zero = True
+        if changed:
+            return output
+        else:
+            return line
 
     def set_win_count(self, number):
         """
@@ -159,6 +100,12 @@ class TwentyFortyEight:
         if int(power) != power:
             raise ValueError("Win number should be power of 2, e.g. 512 or 1024")
         self._win_count = number
+
+    def get_win_count(self):
+        """
+        Returns he number that should be obtained to win, which is by default 2048
+        """
+        return self._win_count
 
     def log(self, output):
         if not self._suppress_output:
@@ -225,11 +172,11 @@ class TwentyFortyEight:
         changed = False
         for starting_cell in self._starting_cells[direction]:
             line = self.get_line(starting_cell, direction)
-            merge_result = TwentyFortyEight.merge_with_metrics(line)
-            if merge_result[0] + merge_result[1] != 0:
+            new_line = TwentyFortyEight.merge(line)
+            if new_line != line:
                 changed = True
-                self.replace_line(merge_result[-1], starting_cell, direction)
-                if self._win_count in merge_result[-1]:
+                self.replace_line(new_line, starting_cell, direction)
+                if self._win_count in new_line:
                     self._win = True
         if self._win:
             if not self._suppress_output:
@@ -257,14 +204,11 @@ class TwentyFortyEight:
         If this number is 0 it means that move is illegal
         """
         changes = 0
-        initial_corner_sum = self.get_tile(0, 0) + self.get_tile(0, self._grid_width - 1) + \
-            self.get_tile(self._grid_height - 1, self._grid_width - 1) + self.get_tile(self._grid_height - 1, 0)
         for starting_cell in self._starting_cells[direction]:
             line = self.get_line(starting_cell, direction)
-            merge_result = TwentyFortyEight.merge_with_metrics(line)
-            #print "merge result:", merge_result[0]
-            changes += merge_result[0] + merge_result[1]#* 1.0 / (2 + starting_cell[0] + starting_cell[1])
-        #print "changes:", changes
+            new_line = TwentyFortyEight.merge(line)
+            if new_line != line:
+                changes += 1
         return changes
 
     @property
@@ -311,9 +255,13 @@ class TwentyFortyEight:
         """
         if OFFSETS[direction][1] == 0:
             # row = starting_cell[0]
-            return [(row, starting_cell[1]) for row in range(starting_cell[0], starting_cell[0] + OFFSETS[direction][0] * self._grid_height, OFFSETS[direction][0])]
+            return [(row, starting_cell[1]) for row in
+                    range(starting_cell[0], starting_cell[0] + OFFSETS[direction][0] * self._grid_height,
+                          OFFSETS[direction][0])]
         else:
-            return [(starting_cell[0], col) for col in range(starting_cell[1], starting_cell[1] + OFFSETS[direction][1] * self._grid_width, OFFSETS[direction][1])]
+            return [(starting_cell[0], col) for col in
+                    range(starting_cell[1], starting_cell[1] + OFFSETS[direction][1] * self._grid_width,
+                          OFFSETS[direction][1])]
 
     def get_line(self, starting_cell, direction):
         """
@@ -380,45 +328,10 @@ class TwentyFortyEight:
         """
         self._grid = list2d(grid)
 
-    def get_suggestion(self):
+    def get_grid(self):
         """
-        Calculates the best move for given state
-        :return: Returns direction of the best move according to AI player
+        Returns copy of the game's grid
         """
-        if self._stuck:
-            self.log("No legal moves")
-            return
-        if self._win:
-            return
-        #self._suppress_output = True
-        directions_score = {}
-        for direction in TwentyFortyEight.DIRECTIONS:
-            direction_name = TwentyFortyEight.DIRECTION_NAMES[direction]
-            merge_score = self.check_move(direction)
-            if merge_score == 0:
-                continue
-            directions_score[direction_name] = merge_score
-        #self._suppress_output = False
-        if len(directions_score) == 0:
-            self._stuck = True
-            self.log("No legal moves. You lost the game")
-            return "stuck"
-        return key_of_max(directions_score)
-
-
-# def test_merge(input, expected_output):
-#     output = merge(input)
-#     if output != expected_output:
-#         self.log "Test failed for input:", input, "expected output:", expected_output, ", but was", output
-#     else:
-#         self.log "Test passed for input:", input, ". Output:", output
-
-
-# test_merge([2, 0, 2, 4], [4, 4, 0, 0])
-# test_merge([0, 0, 2, 2], [4, 0, 0, 0])
-# test_merge([2, 2, 0, 0], [4, 0, 0, 0])
-# test_merge([2, 2, 2, 2, 2], [4, 4, 2, 0, 0])
-# test_merge([8, 16, 16, 8], [8, 32, 8, 0])
-
+        return list2d(self._grid)
 
 # poc_2048_gui.run_gui(TwentyFortyEight(4, 4))

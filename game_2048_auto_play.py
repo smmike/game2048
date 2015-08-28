@@ -1,4 +1,4 @@
-__author__ = 'mismirno'
+__author__ = 'smmike'
 import game_2048
 
 
