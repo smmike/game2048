@@ -40,23 +40,24 @@ def merge(line):
     Helper function that merges a single row or column in 2048
     """
     output = []
-    shift = 0
+    merge_factor = 0
+    shift_factor = 0
+    merged = False
     for index in range(len(line)):
         if index == 0:
-            output.append(line[index])
-        else:
-            # self.log index, shift, index - 1 - shift, output
-            if line[index] == 0:
-                shift += 1
-            elif line[index] == output[index - 1 - shift]:
-                output[index - 1 - shift] += line[index]
-                output.append(0)
-            elif output[index - 1 - shift] == 0:
-                output[index - 1 - shift] += line[index]
-                shift += 1
+            if line[index] != 0:
+                output.append(line[index])
+            else:
+                shift_factor += 1
+        elif line[index] != 0:
+            if len(output) > 0 and line[index] == output[-1] and not merged:
+                merge_factor += 1
+                output[-1] += line[index]
+                merged = True
             else:
                 output.append(line[index])
-                # we should pad output array with 0 to the length of input
+                merged = False
+    # we should pad output array with 0 to the length of input
     while len(output) < len(line):
         output.append(0)
     return output
@@ -99,7 +100,7 @@ class TwentyFortyEight:
     def merge_with_metrics(line):
         """
         This method merges a line towards its start and return a list consisting of 2 elements:
-            * number of individual cells merges happened, where shift of a number at 1 cell to replace 0 is counted
+            * number of individual cells merges happened, where shift_factor of a number at 1 cell to replace 0 is counted
                 as 1 and actual merge of 2 equal values is counted as floating number between 1 and 2 calculated as
                 follows: 1 + (len(line) - merged_index)/len(line), i.e. the closer a merge to the beginning the more
                 score it gets
@@ -108,29 +109,47 @@ class TwentyFortyEight:
         output = []
         merge_factor = 0
         shift_factor = 0
-        shift = 0
+        merged = False
         for index in range(len(line)):
             if index == 0:
-                output.append(line[index])
-            else:
-                # self.log index, shift, index - 1 - shift, output
-                if line[index] == 0:
-                    shift += 1
-                elif line[index] == output[index - 1 - shift]:
-                    output[index - 1 - shift] += line[index]
-                    merge_factor += 1 #+ 4.0*(float(len(line)) - (index - 1 - shift))/len(line)
-                    output.append(0)
-                elif output[index - 1 - shift] == 0:
-                    output[index - 1 - shift] += line[index]
-                    shift += 1
+                if line[index] != 0:
+                    output.append(line[index])
+                else:
                     shift_factor += 1
+            elif line[index] != 0:
+                if len(output) > 0 and line[index] == output[-1] and not merged:
+                    merge_factor += 1 + 1.0 * (float(len(line)) - len(output))/len(line)
+                    output[-1] += line[index]
+                    merged = True
                 else:
                     output.append(line[index])
+                    merged = False
+            # else:
+            #     # self.log index, shift_factor, index - 1 - shift_factor, output
+            #     print index, shift, line, output
+            #     if line[index] != 0:
+            #         shift += 1
+            #     elif
+            #     elif line[index] == output[index - 1 - shift]:
+            #         output[index - 1 - shift] += line[index]
+            #         merge_factor += 1 #+ 4.0*(float(len(line)) - (index - 1 - shift_factor))/len(line)
+            #         output.append(0)
+            #     elif output[index - 1 - shift] == 0:
+            #         output[index - 1 - shift] += line[index]
+            #         shift += 1
+            #     else:
+            #         output.append(line[index])
+
         # we should pad output array with 0 to the length of input
         # while len(output) < len(line):
         #    output.append(0)
-        trailing_zeroes_factor = len(line) - len(output)
-        return [merge_factor, shift_factor, trailing_zeroes_factor, output] #return [merges + (len(line) - len(output)), output]
+        shift_factor += len(line) - len(output)
+        decrease_factor = 0
+        if len(output) > 1:
+            for index in range(1, len(output)):
+                if output[index] < output[index - 1]:
+                    decrease_factor += (len(output) - index) / (1.0 * len(output))
+        return [merge_factor, shift_factor, decrease_factor, output] #return [merges + (len(line) - len(output)), output]
 
     def set_win_count(self, number):
         """

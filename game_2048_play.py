@@ -1,10 +1,9 @@
 __author__ = 'mismirno'
 import game_2048
 
-game = game_2048.TwentyFortyEight(3, 4)
+game = game_2048.TwentyFortyEight(4, 4)
 print game
 while True:
-    print "Suggested move:", game.get_suggestion()
     str_dir = raw_input("Enter up(u), down(d), left(l) or right(r):")
     print "Moving", str_dir
     if str_dir == "up" or "up".startswith(str_dir):
